@@ -1,0 +1,10 @@
+
+fastapi
+uvicorn
+python-multipart
+mysql-connector-python
+python-dotenv
+openai
+groq
+python-magic
+pydantic
