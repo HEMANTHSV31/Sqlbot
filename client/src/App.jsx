@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, Square, Loader2, Database, AlertCircle } from 'lucide-react';
 
-const API_BASE = '/api';
+// For local development, use the direct backend URL.
+// For production, you might use a relative path or an environment variable.
+const API_BASE = 'http://127.0.0.1:8000';
 
 function App() {
   const [messages, setMessages] = useState([]);
@@ -9,7 +11,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
-  const [audioChunks, setAudioChunks] = useState([]);
+  // This state is no longer strictly necessary but can be kept for potential future use.
+  const [audioChunks, setAudioChunks] = useState([]); 
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -20,6 +23,7 @@ function App() {
     scrollToBottom();
   }, [messages]);
 
+  // --- UPDATED FUNCTION ---
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -31,9 +35,8 @@ function App() {
         } 
       });
       
-      const recorder = new MediaRecorder(stream, { 
-        mimeType: 'audio/webm;codecs=opus' 
-      });
+      // Let the browser use its default recorder settings. We will construct the WAV blob on stop.
+      const recorder = new MediaRecorder(stream);
       
       const chunks = [];
 
@@ -43,17 +46,21 @@ function App() {
         }
       };
 
+      // This is the most important change. We create the Blob as a WAV file.
       recorder.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        await handleAudioSubmit(audioBlob);
+        // Create the blob with the 'audio/wav' type
+        const audioBlob = new Blob(chunks, { type: 'audio/wav' });
+        // And tell the backend it's a .wav file by passing the filename
+        await handleAudioSubmit(audioBlob, 'recording.wav');
         stream.getTracks().forEach(track => track.stop());
       };
 
-      recorder.start(1000); // Collect data every second
+      recorder.start();
       setMediaRecorder(recorder);
       setAudioChunks(chunks);
       setIsRecording(true);
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error starting recording:', error);
       addMessage('assistant', 'Error accessing microphone. Please check permissions.', true);
     }
@@ -109,12 +116,15 @@ function App() {
     }
   };
 
-  const handleAudioSubmit = async (audioBlob) => {
+  // --- UPDATED FUNCTION ---
+  // Now accepts a filename to use in the FormData
+  const handleAudioSubmit = async (audioBlob, filename) => {
     setIsLoading(true);
 
     try {
       const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
+      // Use the filename passed from the onstop handler (e.g., 'recording.wav')
+      formData.append('audio', audioBlob, filename);
 
       const response = await fetch(`${API_BASE}/query-audio`, {
         method: 'POST',
@@ -135,7 +145,7 @@ function App() {
       setIsLoading(false);
     }
   };
-
+  
   const formatDataAsTable = (data) => {
     if (!data || data.length === 0) return null;
 

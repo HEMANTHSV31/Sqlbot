@@ -1,0 +1,16 @@
+text,intent
+show me all users,get_data
+list all products,get_data
+display the orders,get_data
+top 5 products by revenue,get_data
+how many users are there,get_data
+total revenue from sales,get_data
+show me the most recent orders,get_data
+cuántos usuarios hay,get_data
+muestra todos los productos,get_data
+ver las órdenes,get_data
+hello,greeting
+hi,greeting
+good morning,greeting
+what can you do,help
+help,help
