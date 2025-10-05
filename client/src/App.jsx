@@ -201,7 +201,7 @@ function App() {
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-500 hidden md:block">
-                Tables: users, products, orders, order_items, product_sales
+                Tables: users, products, orders, order_items, product_sales, categories
               </div>
               {messages.length > 0 && (
                 <button
@@ -239,7 +239,7 @@ function App() {
                 <div className="bg-white p-4 rounded-lg border border-gray-200">
                   <h3 className="font-medium text-gray-900 mb-2">Voice Commands</h3>
                   <p className="text-sm text-gray-600 text-left">
-                    Click the microphone button and speak your query naturally
+                    Click the microphone button and speak 
                   </p>
                 </div>
               </div>
@@ -358,7 +358,7 @@ function App() {
             <div className="text-center mt-3">
               <div className="inline-flex items-center space-x-2 bg-red-50 text-red-700 px-3 py-1 rounded-full">
                 <div className="h-2 w-2 bg-red-600 rounded-full animate-ping"></div>
-                <span className="text-sm font-medium">Recording... Click Stop when finished</span>
+                <span className="text-sm font-medium">Recording...</span>
               </div>
             </div>
           )}
