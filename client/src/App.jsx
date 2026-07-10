@@ -1,590 +1,57 @@
-// import React, { useState, useRef, useEffect } from 'react';
-// import { Send, Mic, Square, Loader2, Database, AlertCircle } from 'lucide-react';
-
-// // For local development, use the direct backend URL.
-// // For production, you might use a relative path or an environment variable.
-// const API_BASE = 'http://127.0.0.1:8000';
-
-// function App() {
-//   const [messages, setMessages] = useState([]);
-//   const [inputText, setInputText] = useState('');
-//   const [isLoading, setIsLoading] = useState(false);
-//   const [isRecording, setIsRecording] = useState(false);
-//   const [mediaRecorder, setMediaRecorder] = useState(null);
-//   // This state is no longer strictly necessary but can be kept for potential future use.
-//   const [audioChunks, setAudioChunks] = useState([]); 
-//   const messagesEndRef = useRef(null);
-
-//   const scrollToBottom = () => {
-//     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-//   };
-
-//   useEffect(() => {
-//     scrollToBottom();
-//   }, [messages]);
-
-//   // --- UPDATED FUNCTION ---
-//   const startRecording = async () => {
-//     try {
-//       const stream = await navigator.mediaDevices.getUserMedia({ 
-//         audio: {
-//           sampleRate: 16000,
-//           channelCount: 1,
-//           echoCancellation: true,
-//           noiseSuppression: true
-//         } 
-//       });
-      
-//       // Let the browser use its default recorder settings. We will construct the WAV blob on stop.
-//       const recorder = new MediaRecorder(stream);
-      
-//       const chunks = [];
-
-//       recorder.ondataavailable = (e) => {
-//         if (e.data.size > 0) {
-//           chunks.push(e.data);
-//         }
-//       };
-
-//       // This is the most important change. We create the Blob as a WAV file.
-//       recorder.onstop = async () => {
-//         // Create the blob with the 'audio/wav' type
-//         const audioBlob = new Blob(chunks, { type: 'audio/wav' });
-//         // And tell the backend it's a .wav file by passing the filename
-//         await handleAudioSubmit(audioBlob, 'recording.wav');
-//         stream.getTracks().forEach(track => track.stop());
-//       };
-
-//       recorder.start();
-//       setMediaRecorder(recorder);
-//       setAudioChunks(chunks);
-//       setIsRecording(true);
-//     } catch (error)
-//     {
-//       console.error('Error starting recording:', error);
-//       addMessage('assistant', 'Error accessing microphone. Please check permissions.', true);
-//     }
-//   };
-
-//   const stopRecording = () => {
-//     if (mediaRecorder && isRecording) {
-//       mediaRecorder.stop();
-//       setIsRecording(false);
-//     }
-//   };
-
-//   const addMessage = (role, content, isError = false, sqlQuery = null, data = null, type = 'text') => {
-//     const message = {
-//       role,
-//       content,
-//       isError,
-//       sqlQuery,
-//       data,
-//       type,
-//       timestamp: new Date().toISOString()
-//     };
-//     setMessages(prev => [...prev, message]);
-//   };
-
-//   const handleTextSubmit = async (e) => {
-//     e.preventDefault();
-//     if (!inputText.trim() || isLoading) return;
-
-//     addMessage('user', inputText, false, null, null, 'text');
-//     setInputText('');
-//     setIsLoading(true);
-
-//     try {
-//       const response = await fetch(`${API_BASE}/query-text`, {
-//         method: 'POST',
-//         headers: { 'Content-Type': 'application/json' },
-//         body: JSON.stringify({ message: inputText }),
-//       });
-
-//       if (!response.ok) {
-//         throw new Error(`HTTP error! status: ${response.status}`);
-//       }
-
-//       const data = await response.json();
-      
-//       addMessage('assistant', data.message, false, data.sql_query, data.data, 'text');
-//     } catch (error) {
-//       console.error('Error:', error);
-//       addMessage('assistant', 'Sorry, there was an error processing your request. Please check if the backend server is running.', true);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   // --- UPDATED FUNCTION ---
-//   // Now accepts a filename to use in the FormData
-//   const handleAudioSubmit = async (audioBlob, filename) => {
-//     setIsLoading(true);
-
-//     try {
-//       const formData = new FormData();
-//       // Use the filename passed from the onstop handler (e.g., 'recording.wav')
-//       formData.append('audio', audioBlob, filename);
-
-//       const response = await fetch(`${API_BASE}/query-audio`, {
-//         method: 'POST',
-//         body: formData,
-//       });
-
-//       if (!response.ok) {
-//         throw new Error(`HTTP error! status: ${response.status}`);
-//       }
-
-//       const data = await response.json();
-      
-//       addMessage('assistant', data.message, false, data.sql_query, data.data, 'audio');
-//     } catch (error) {
-//       console.error('Error:', error);
-//       addMessage('assistant', 'Sorry, there was an error processing your audio. Please try again.', true, null, null, 'audio');
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-  
-//   const formatDataAsTable = (data) => {
-//     if (!data || data.length === 0) return null;
-
-//     const columns = Object.keys(data[0]);
-
-//     return (
-//       <div className="overflow-x-auto mt-2 border border-gray-200 rounded-lg">
-//         <table className="min-w-full bg-white">
-//           <thead>
-//             <tr className="bg-gray-50">
-//               {columns.map(column => (
-//                 <th key={column} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">
-//                   {column}
-//                 </th>
-//               ))}
-//             </tr>
-//           </thead>
-//           <tbody className="divide-y divide-gray-200">
-//             {data.map((row, index) => (
-//               <tr key={index} className="hover:bg-gray-50">
-//                 {columns.map(column => (
-//                   <td key={column} className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-//                     {String(row[column])}
-//                   </td>
-//                 ))}
-//               </tr>
-//             ))}
-//           </tbody>
-//         </table>
-//         <div className="bg-gray-50 px-4 py-2 text-xs text-gray-500 border-t">
-//           Showing {data.length} row(s)
-//         </div>
-//       </div>
-//     );
-//   };
-
-//   const clearChat = () => {
-//     setMessages([]);
-//   };
-
-//   return (
-//     <div className="flex flex-col h-screen bg-gray-50">
-//       {/* Header */}
-//       <header className="bg-white shadow-sm border-b border-gray-200">
-//         <div className="max-w-6xl mx-auto px-4 py-4">
-//           <div className="flex items-center justify-between">
-//             <div className="flex items-center space-x-3">
-//               <Database className="h-8 w-8 text-blue-600" />
-//               <div>
-//                 <h1 className="text-2xl font-bold text-gray-900">SQL Chatbot</h1>
-//                 <p className="text-sm text-gray-600">Ask questions about your database using text or voice</p>
-//               </div>
-//             </div>
-//             <div className="flex items-center space-x-4">
-//               <div className="text-sm text-gray-500 hidden md:block">
-//                 Tables: users, products, orders, order_items, product_sales, categories
-//               </div>
-//               {messages.length > 0 && (
-//                 <button
-//                   onClick={clearChat}
-//                   className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
-//                 >
-//                   Clear Chat
-//                 </button>
-//               )}
-//             </div>
-//           </div>
-//         </div>
-//       </header>
-
-//       {/* Messages */}
-//       <div className="flex-1 overflow-y-auto px-4 py-6">
-//         <div className="max-w-6xl mx-auto space-y-4">
-//           {messages.length === 0 && (
-//             <div className="text-center text-gray-500 mt-20">
-//               <Database className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-//               <p className="text-lg font-medium">Start a conversation with your database</p>
-//               <p className="text-sm mt-2 max-w-md mx-auto">
-//                 Try asking: "Show me the top 5 products by revenue" or "How many users signed up this week?"
-//               </p>
-//               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-//                 <div className="bg-white p-4 rounded-lg border border-gray-200">
-//                   <h3 className="font-medium text-gray-900 mb-2">Example Queries</h3>
-//                   <ul className="text-sm text-gray-600 space-y-1 text-left">
-//                     <li>• "Show all users"</li>
-//                     <li>• "Top selling products"</li>
-//                     <li>• "Recent orders"</li>
-//                     <li>• "Total revenue by product"</li>
-//                   </ul>
-//                 </div>
-//                 <div className="bg-white p-4 rounded-lg border border-gray-200">
-//                   <h3 className="font-medium text-gray-900 mb-2">Voice Commands</h3>
-//                   <p className="text-sm text-gray-600 text-left">
-//                     Click the microphone button and speak 
-//                   </p>
-//                 </div>
-//               </div>
-//             </div>
-//           )}
-
-//           {messages.map((message, index) => (
-//             <div
-//               key={index}
-//               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-//             >
-//               <div
-//                 className={`max-w-2xl lg:max-w-3xl rounded-lg px-4 py-3 ${
-//                   message.role === 'user'
-//                     ? 'bg-blue-600 text-white rounded-br-none'
-//                     : message.isError
-//                     ? 'bg-red-50 text-red-800 border border-red-200'
-//                     : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none shadow-sm'
-//                 }`}
-//               >
-//                 <div className="flex items-center space-x-2 mb-2">
-//                   {message.type === 'audio' && (
-//                     <span className="text-xs bg-black bg-opacity-20 px-2 py-1 rounded">
-//                       🎤 Voice
-//                     </span>
-//                   )}
-//                   {message.isError && (
-//                     <AlertCircle className="h-4 w-4" />
-//                   )}
-//                 </div>
-                
-//                 <p className="whitespace-pre-wrap">{message.content}</p>
-                
-//                 {message.sqlQuery && !message.isError && (
-//                   <div className="mt-3 pt-3 border-t border-gray-200 border-opacity-30">
-//                     <details className="text-sm">
-//                       <summary className="cursor-pointer font-medium text-gray-600 hover:text-gray-800">
-//                          View Generated SQL
-//                       </summary>
-//                       <pre className="mt-2 p-3 bg-gray-800 text-gray-100 rounded text-xs overflow-x-auto">
-//                         {message.sqlQuery}
-//                       </pre>
-//                     </details>
-//                   </div>
-//                 )}
-                
-//                 {message.data && !message.isError && formatDataAsTable(message.data)}
-//               </div>
-//             </div>
-//           ))}
-
-//           {isLoading && (
-//             <div className="flex justify-start">
-//               <div className="bg-white border border-gray-200 rounded-lg rounded-bl-none px-4 py-3 max-w-3xl shadow-sm">
-//                 <div className="flex items-center space-x-2">
-//                   <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-//                   <span className="text-gray-600">Processing your query...</span>
-//                 </div>
-//               </div>
-//             </div>
-//           )}
-
-//           <div ref={messagesEndRef} />
-//         </div>
-//       </div>
-
-//       {/* Input Area */}
-//       <div className="bg-white border-t border-gray-200 px-4 py-4">
-//         <div className="max-w-6xl mx-auto">
-//           <form onSubmit={handleTextSubmit} className="flex space-x-3">
-//             <div className="flex-1">
-//               <input
-//                 type="text"
-//                 value={inputText}
-//                 onChange={(e) => setInputText(e.target.value)}
-//                 placeholder="Ask a question about your data (e.g., 'show me top products by revenue')..."
-//                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-//                 disabled={isLoading || isRecording}
-//               />
-//             </div>
-            
-//             <button
-//               type="submit"
-//               disabled={!inputText.trim() || isLoading || isRecording}
-//               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2 transition-colors"
-//             >
-//               <Send className="h-4 w-4" />
-//               <span className="hidden sm:inline">Send</span>
-//             </button>
-
-//             <button
-//               type="button"
-//               onClick={isRecording ? stopRecording : startRecording}
-//               disabled={isLoading}
-//               className={`px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors ${
-//                 isRecording
-//                   ? 'bg-red-600 text-white hover:bg-red-700'
-//                   : 'bg-gray-600 text-white hover:bg-gray-700'
-//               } disabled:bg-gray-400 disabled:cursor-not-allowed`}
-//             >
-//               {isRecording ? (
-//                 <>
-//                   <Square className="h-4 w-4" />
-//                   <span className="hidden sm:inline">Stop</span>
-//                 </>
-//               ) : (
-//                 <>
-//                   <Mic className="h-4 w-4" />
-//                   <span className="hidden sm:inline">Voice</span>
-//                 </>
-//               )}
-//             </button>
-//           </form>
-          
-//           {isRecording && (
-//             <div className="text-center mt-3">
-//               <div className="inline-flex items-center space-x-2 bg-red-50 text-red-700 px-3 py-1 rounded-full">
-//                 <div className="h-2 w-2 bg-red-600 rounded-full animate-ping"></div>
-//                 <span className="text-sm font-medium">Recording...</span>
-//               </div>
-//             </div>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// export default App;
-
-// import React, { useState, useRef, useEffect } from 'react';
-// import { Send, Mic, Square, Loader2, Database, AlertCircle } from 'lucide-react';
-
-// const API_BASE = 'http://127.0.0.1:8000';
-
-// function App() {
-//   const [messages, setMessages] = useState([]);
-//   const [inputText, setInputText] = useState('');
-//   const [isLoading, setIsLoading] = useState(false);
-//   const [isRecording, setIsRecording] = useState(false);
-//   const mediaRecorderRef = useRef(null);
-//   const messagesEndRef = useRef(null);
-
-//   const scrollToBottom = () => {
-//     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-//   };
-
-//   useEffect(() => {
-//     scrollToBottom();
-//   }, [messages]);
-
-//   const startRecording = async () => {
-//     try {
-//       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-//       const recorder = new MediaRecorder(stream);
-//       mediaRecorderRef.current = recorder;
-      
-//       const chunks = [];
-//       recorder.ondataavailable = (e) => {
-//         if (e.data.size > 0) {
-//           chunks.push(e.data);
-//         }
-//       };
-
-//       recorder.onstop = async () => {
-//         const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-//         await handleAudioSubmit(audioBlob, 'recording.webm');
-//         stream.getTracks().forEach(track => track.stop());
-//       };
-
-//       recorder.start();
-//       setIsRecording(true);
-//     } catch (error) {
-//       console.error('Error starting recording:', error);
-//       addMessage({ role: 'assistant', content: 'Error: Could not access microphone. Please check browser permissions.', isError: true });
-//     }
-//   };
-
-//   const stopRecording = () => {
-//     if (mediaRecorderRef.current && isRecording) {
-//       mediaRecorderRef.current.stop();
-//       setIsRecording(false);
-//     }
-//   };
-
-//   const addMessage = (message) => {
-//     setMessages(prev => [...prev, { ...message, timestamp: new Date().toISOString() }]);
-//   };
-
-//   const handleTextSubmit = async (e) => {
-//     e.preventDefault();
-//     if (!inputText.trim() || isLoading) return;
-
-//     const userMessage = inputText;
-//     addMessage({ role: 'user', content: userMessage, type: 'text' });
-//     setInputText('');
-//     setIsLoading(true);
-
-//     try {
-//       const response = await fetch(`${API_BASE}/query-text`, {
-//         method: 'POST',
-//         headers: { 'Content-Type': 'application/json' },
-//         body: JSON.stringify({ message: userMessage }),
-//       });
-//       const data = await response.json();
-//       if (!response.ok) throw new Error(data.error || 'An unknown network error occurred.');
-//       addMessage({ role: 'assistant', ...data, isError: !!data.error, type: 'text' });
-//     } catch (error) {
-//       console.error('Error:', error);
-//       addMessage({ role: 'assistant', content: `Error: ${error.message}. Is the backend server running?`, isError: true });
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   const handleAudioSubmit = async (audioBlob, filename) => {
-//     setIsLoading(true);
-//     try {
-//       const formData = new FormData();
-//       formData.append('audio', audioBlob, filename);
-//       const response = await fetch(`${API_BASE}/query-audio`, {
-//         method: 'POST',
-//         body: formData,
-//       });
-//       const data = await response.json();
-//       if (!response.ok) throw new Error(data.error || 'An unknown network error occurred.');
-      
-//       if (data.transcript) {
-//         addMessage({ role: 'user', content: data.transcript, type: 'audio' });
-//       }
-
-//       addMessage({ role: 'assistant', ...data, isError: !!data.error, type: 'audio' });
-
-//     } catch (error) {
-//       console.error('Error:', error);
-//       addMessage({ role: 'assistant', content: `Audio Error: ${error.message}. Please try again.`, isError: true, type: 'audio' });
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-  
-//   const formatDataAsTable = (data) => {
-//     if (!data || data.length === 0) return null;
-//     const columns = Object.keys(data[0]);
-//     return (
-//       <div className="overflow-x-auto mt-2 border border-gray-200 rounded-lg">
-//         <table className="min-w-full bg-white">
-//           <thead>
-//             <tr className="bg-gray-50">
-//               {columns.map(col => <th key={col} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">{col}</th>)}
-//             </tr>
-//           </thead>
-//           <tbody className="divide-y divide-gray-200">
-//             {data.map((row, i) => <tr key={i} className="hover:bg-gray-50">{columns.map(col => <td key={col} className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{String(row[col])}</td>)}</tr>)}
-//           </tbody>
-//         </table>
-//       </div>
-//     );
-//   };
-
-//   const clearChat = () => setMessages([]);
-
-//   return (
-//     <div className="flex flex-col h-screen bg-gray-50">
-//       <header className="bg-white shadow-sm border-b border-gray-200">
-//         <div className="max-w-6xl mx-auto px-4 py-4">
-//           <div className="flex items-center justify-between">
-//             <div className="flex items-center space-x-3">
-//               <Database className="h-8 w-8 text-blue-600" />
-//               <div>
-//                 <h1 className="text-2xl font-bold text-gray-900">SQL Chatbot</h1>
-//                 <p className="text-sm text-gray-600">Ask questions about your database using text or voice</p>
-//               </div>
-//             </div>
-//             {messages.length > 0 && <button onClick={clearChat} className="px-3 py-1 text-sm text-gray-600 border rounded-md hover:bg-gray-50">Clear Chat</button>}
-//           </div>
-//         </div>
-//       </header>
-
-//       <div className="flex-1 overflow-y-auto px-4 py-6">
-//         <div className="max-w-6xl mx-auto space-y-4">
-//           {messages.length === 0 && (
-//             <div className="text-center text-gray-500 mt-20">
-//               <p className="text-lg">Start a conversation with your database</p>
-//               <p className="text-sm mt-1">Try: "Show me the top 5 products by revenue"</p>
-//             </div>
-//           )}
-
-//           {messages.map((msg, i) => (
-//             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-//               <div className={`max-w-2xl lg:max-w-3xl rounded-lg px-4 py-3 ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : msg.isError ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none shadow-sm'}`}>
-//                 <div className="flex items-center space-x-2 mb-1">
-//                   {msg.type === 'audio' && msg.role === 'user' && <Mic className="h-4 w-4" />}
-//                   {msg.isError && <AlertCircle className="h-4 w-4" />}
-//                   <span className="font-medium text-sm">{msg.role === 'user' ? 'You' : 'Assistant'}</span>
-//                 </div>
-//                 <p className="whitespace-pre-wrap">{msg.content}</p>
-//                 {msg.sqlQuery && !msg.isError && (
-//                   <details className="mt-3 pt-3 border-t border-gray-200 border-opacity-30 text-sm">
-//                     <summary className="cursor-pointer font-medium text-gray-600 hover:text-gray-800">View Generated SQL</summary>
-//                     <pre className="mt-2 p-3 bg-gray-800 text-gray-100 rounded text-xs overflow-x-auto">{msg.sqlQuery}</pre>
-//                   </details>
-//                 )}
-//                 {msg.data && !msg.isError && formatDataAsTable(msg.data)}
-//               </div>
-//             </div>
-//           ))}
-
-//           {isLoading && (
-//             <div className="flex justify-start">
-//               <div className="bg-white border rounded-lg px-4 py-3 shadow-sm"><Loader2 className="h-4 w-4 animate-spin text-blue-600" /></div>
-//             </div>
-//           )}
-//           <div ref={messagesEndRef} />
-//         </div>
-//       </div>
-
-//       <div className="bg-white border-t px-4 py-4">
-//         <div className="max-w-6xl mx-auto">
-//           <form onSubmit={handleTextSubmit} className="flex space-x-3">
-//             <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder="Ask a question..." className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500" disabled={isLoading || isRecording} />
-//             <button type="submit" disabled={!inputText.trim() || isLoading || isRecording} className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center"><Send className="h-4 w-4" /></button>
-//             <button type="button" onClick={isRecording ? stopRecording : startRecording} disabled={isLoading} className={`px-6 py-3 rounded-lg flex items-center ${isRecording ? 'bg-red-600' : 'bg-gray-600'} text-white hover:opacity-90 disabled:bg-gray-400`}>
-//               {isRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-//             </button>
-//           </form>
-//           {isRecording && <div className="text-center mt-2 text-sm text-red-600">Recording...</div>}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// export default App;
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import QueryInput from "./components/QueryInput";
 import ResultsDisplay from "./components/ResultsDisplay";
+import SettingsModal from "./components/SettingsModal";
 
 export default function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [config, setConfig] = useState(null);
+  const [indexingStatus, setIndexingStatus] = useState("");
+
+  useEffect(() => {
+    const savedConfig = localStorage.getItem("db_bot_config");
+    if (savedConfig) {
+      try {
+        setConfig(JSON.parse(savedConfig));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  const handleConfigSave = (newConfig) => {
+    setConfig(newConfig);
+  };
+
+  const handleIndexSchema = async () => {
+    if (!config || !config.db_host) {
+      alert("Please configure your DB connection in settings first.");
+      return;
+    }
+    setIndexingStatus("Indexing schema...");
+    try {
+      const res = await fetch("http://localhost:8000/index-schema", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Indexing failed");
+      setIndexingStatus(`Success: ${data.message}`);
+      setTimeout(() => setIndexingStatus(""), 5000);
+    } catch (err) {
+      setIndexingStatus(`Error: ${err.message}`);
+    }
+  };
 
   const handleQuery = async (queryText) => {
+    if (!config || !config.db_host) {
+      setError("Please configure your Database in the settings first.");
+      return;
+    }
+
     setError(null);
     setLoading(true);
     setResult(null);
@@ -592,7 +59,7 @@ export default function App() {
       const res = await fetch("http://localhost:8000/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: queryText }),
+        body: JSON.stringify({ query: queryText, config }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Query failed");
@@ -604,12 +71,39 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10 px-4">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">AI Database Analytics</h1>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10 px-4 relative">
+      <SettingsModal onSave={handleConfigSave} />
+
+      <h1 className="text-3xl font-bold text-gray-800 mb-2">AI Database Analytics</h1>
+      <p className="text-gray-500 mb-8 text-center max-w-xl">
+        Query your database using natural language. Powered by LangGraph and Groq.
+      </p>
+
+      {config && (
+        <div className="mb-6 flex items-center space-x-4">
+          <button
+            onClick={handleIndexSchema}
+            className="text-sm bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg font-medium hover:bg-indigo-200 transition-colors"
+          >
+            Index Database Schema
+          </button>
+          {indexingStatus && <span className="text-sm text-gray-600">{indexingStatus}</span>}
+        </div>
+      )}
 
       <QueryInput onSubmit={handleQuery} loading={loading} />
 
-      {error && <p className="text-red-600 mt-4">{error}</p>}
+      {error && (
+        <div className="mt-6 bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl w-full max-w-4xl shadow-sm">
+          <p className="font-semibold flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            Error
+          </p>
+          <p className="mt-1 text-sm">{error}</p>
+        </div>
+      )}
 
       {result && <ResultsDisplay result={result} />}
     </div>
